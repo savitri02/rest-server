@@ -1,0 +1,31 @@
+[
+    {
+      "id": 1,
+      "name": "consum 1",
+      "type": "Desktop",
+      "location_id": 1,
+      "user_id": 1
+    },
+    {
+      "id": 2,
+      "name": "consum 2",
+      "type": "Scientific Equipment",
+      "location_id": 2,
+      "user_id": 2
+    },
+    {
+      "id": 3,
+      "name": "consum 3",
+      "type": "Server",
+      "location_id": 3,
+      "user_id": null
+    },
+    {
+      "id": 4,
+      "name": "consum 4",
+      "type": "Laptop",
+      "location_id": 1,
+      "user_id": 3
+    }
+  ]
+  

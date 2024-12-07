@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "name": "Workstation Alpha",
+    "type": "Desktop",
+    "location_id": 1,
+    "user_id": 1
+  },
+  {
+    "id": 2,
+    "name": "Lab Scanner",
+    "type": "Scientific Equipment",
+    "location_id": 2,
+    "user_id": 2
+  },
+  {
+    "id": 3,
+    "name": "Server Rack 01",
+    "type": "Server",
+    "location_id": 3,
+    "user_id": null
+  },
+  {
+    "id": 4,
+    "name": "Laptop X1",
+    "type": "Laptop",
+    "location_id": 1,
+    "user_id": 3
+  },
+  {
+    "id": 5,
+    "name": "New Printer",
+    "type": "Printer",
+    "location_id": 1,
+    "user_id": 2
+  }
+]

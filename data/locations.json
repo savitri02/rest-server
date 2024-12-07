@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "Main Office",
+    "address": "123 Business St, Suite 100"
+  },
+  {
+    "id": 2,
+    "name": "Research Lab",
+    "address": "456 Innovation Ave"
+  },
+  {
+    "id": 3,
+    "name": "Data Center",
+    "address": "789 Server Lane"
+  }
+]
