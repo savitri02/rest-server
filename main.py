@@ -88,6 +88,55 @@ class ResourceHandler:
         app.logger.info(f"Created {self.resource_name} with id {new_item['id']}")
         return jsonify(new_item), HTTPStatus.CREATED
 
+    def update(self, item_id):
+        """Update an existing item."""
+        app.logger.info(f"Updating {self.resource_name} with id {item_id}")
+        if not request.is_json:
+            app.logger.error("Request Content-Type is not application/json")
+            return jsonify({'error': 'Content-Type must be application/json'}), HTTPStatus.BAD_REQUEST
+
+        data = request.get_json()
+        items = JSONFileHandler.load_json_file(self.file_path)
+        
+        # Find the item to update
+        item_index = next((index for index, item in enumerate(items) 
+                          if str(item.get('id')) == str(item_id)), None)
+        
+        if item_index is None:
+            app.logger.warning(f"{self.resource_name.title()} with id {item_id} not found")
+            return jsonify({'error': f'{self.resource_name.title()} not found'}), HTTPStatus.NOT_FOUND
+
+        # Update the item while preserving its ID
+        updated_item = {
+            'id': items[item_index]['id'],
+            **data
+        }
+        items[item_index] = updated_item
+        JSONFileHandler.save_json_file(self.file_path, items)
+        
+        app.logger.info(f"Updated {self.resource_name} with id {item_id}")
+        return jsonify(updated_item)
+
+    def delete(self, item_id):
+        """Delete an item."""
+        app.logger.info(f"Deleting {self.resource_name} with id {item_id}")
+        items = JSONFileHandler.load_json_file(self.file_path)
+        
+        # Find the item to delete
+        item_index = next((index for index, item in enumerate(items) 
+                          if str(item.get('id')) == str(item_id)), None)
+        
+        if item_index is None:
+            app.logger.warning(f"{self.resource_name.title()} with id {item_id} not found")
+            return jsonify({'error': f'{self.resource_name.title()} not found'}), HTTPStatus.NOT_FOUND
+
+        # Remove the item
+        deleted_item = items.pop(item_index)
+        JSONFileHandler.save_json_file(self.file_path, items)
+        
+        app.logger.info(f"Deleted {self.resource_name} with id {item_id}")
+        return jsonify(deleted_item)
+
 def register_resource_routes():
     """Register routes for each JSON file in the data directory."""
     handlers = JSONFileHandler()
@@ -118,6 +167,21 @@ def register_resource_routes():
             handler.create,
             methods=['POST']
         )
+
+        app.add_url_rule(
+            f"/{resource_name}/<item_id>",
+            f"update_{resource_name}",
+            handler.update,
+            methods=['PUT']
+        )
+
+        app.add_url_rule(
+            f"/{resource_name}/<item_id>",
+            f"delete_{resource_name}",
+            handler.delete,
+            methods=['DELETE']
+        )
+        
         app.logger.info(f"Registered routes for {resource_name}")
 
 @app.route("/")
@@ -129,7 +193,9 @@ def hello_world():
         resource: {
             "GET_all": f"/{resource}",
             "GET_one": f"/{resource}/<id>",
-            "POST": f"/{resource}"
+            "POST": f"/{resource}",
+            "PUT": f"/{resource}/<id>",
+            "DELETE": f"/{resource}/<id>"
         }
         for resource in resources.keys()
     }
