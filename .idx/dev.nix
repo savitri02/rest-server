@@ -7,7 +7,7 @@
   packages = [ pkgs.python3 ];
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
-    extensions = [ "ms-python.python" "rangav.vscode-thunder-client" ];
+    extensions = [ "ms-python.python" "rangav.vscode-thunder-client"  "saoudrizwan.claude-dev"];
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {

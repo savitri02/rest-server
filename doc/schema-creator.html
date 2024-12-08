@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Schema Creator</title>
+    <style>
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #24292e;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .input-section, .output-section {
+            flex: 1;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #2ea44f;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #2c974b;
+        }
+        .error {
+            color: #d73a49;
+            margin: 10px 0;
+        }
+        .success {
+            color: #2ea44f;
+            margin: 10px 0;
+        }
+        pre {
+            background-color: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        code {
+            font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Schema Creator</h1>
+    <p>Create a JSON schema by inputting a JavaScript record object. The tool will automatically generate the corresponding schema.</p>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Input</h2>
+            <p>Enter the resource name:</p>
+            <input type="text" id="resourceName" placeholder="e.g., users, devices, etc." required>
+            
+            <p>Enter a JavaScript record object:</p>
+            <textarea id="inputObject" placeholder='{
+    name: "John Doe",
+    email: "john@example.com",
+    age: 30,
+    isActive: true,
+    roles: ["user", "admin"],
+    address: {
+        street: "123 Main St",
+        city: "Example City"
+    }
+}'></textarea>
+            <button onclick="generateSchema()">Generate Schema</button>
+            <button onclick="submitSchema()" id="submitButton" disabled>Submit Schema</button>
+            <div id="error" class="error"></div>
+            <div id="success" class="success"></div>
+        </div>
+        
+        <div class="output-section">
+            <h2>Generated Schema</h2>
+            <pre><code id="outputSchema"></code></pre>
+        </div>
+    </div>
+
+    <script>
+        function inferType(value) {
+            if (Array.isArray(value)) {
+                const itemType = value.length > 0 ? inferType(value[0]) : { type: "string" };
+                return {
+                    type: "array",
+                    items: itemType
+                };
+            }
+            
+            if (value === null) {
+                return { type: "null" };
+            }
+            
+            if (typeof value === "object") {
+                const properties = {};
+                for (const [key, val] of Object.entries(value)) {
+                    properties[key] = inferType(val);
+                }
+                return {
+                    type: "object",
+                    properties: properties,
+                    required: Object.keys(value)
+                };
+            }
+            
+            const type = typeof value;
+            if (type === "string" && value.includes("@")) {
+                return {
+                    type: "string",
+                    format: "email",
+                    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                };
+            }
+            
+            return { type: type };
+        }
+
+        function generateSchema() {
+            const input = document.getElementById('inputObject').value;
+            const error = document.getElementById('error');
+            const output = document.getElementById('outputSchema');
+            const submitButton = document.getElementById('submitButton');
+            
+            error.textContent = '';
+            output.textContent = '';
+            submitButton.disabled = true;
+            
+            try {
+                // Convert the input string to a JavaScript object
+                const inputObj = eval(`(${input})`);
+                
+                // Generate the schema
+                const schema = {
+                    type: "object",
+                    properties: {},
+                    required: [],
+                    additionalProperties: false
+                };
+                
+                // Add id property
+                schema.properties.id = {
+                    type: "integer",
+                    minimum: 1
+                };
+                
+                // Process other properties
+                for (const [key, value] of Object.entries(inputObj)) {
+                    schema.properties[key] = inferType(value);
+                    schema.required.push(key);
+                }
+                
+                // Display the generated schema
+                output.textContent = JSON.stringify(schema, null, 2);
+                submitButton.disabled = false;
+            } catch (e) {
+                error.textContent = 'Error: Invalid JavaScript object. Please check your input.';
+            }
+        }
+
+        async function submitSchema() {
+            const resourceName = document.getElementById('resourceName').value.trim();
+            const schema = document.getElementById('outputSchema').textContent;
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            
+            error.textContent = '';
+            success.textContent = '';
+            
+            if (!resourceName) {
+                error.textContent = 'Please enter a resource name.';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/schemas/${resourceName}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: schema
+                });
+                
+                if (response.ok) {
+                    success.textContent = `Schema for '${resourceName}' has been successfully updated.`;
+                } else {
+                    const data = await response.json();
+                    error.textContent = `Error: ${data.error || 'Failed to update schema'}`;
+                }
+            } catch (e) {
+                error.textContent = `Error: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

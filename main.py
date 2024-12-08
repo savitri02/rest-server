@@ -1,11 +1,13 @@
 import os
 import json
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from functools import partial
 from jsonschema import validate, ValidationError
+from math import ceil
+import markdown
 
 app = Flask(__name__)
 # Enable pretty printing of JSON
@@ -18,6 +20,16 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 SCHEMA_DIR = Path("schemas")
 SCHEMA_DIR.mkdir(exist_ok=True)
+DOC_DIR = Path("doc")
+DOC_DIR.mkdir(exist_ok=True)
+
+def init_schemas():
+    """Initialize default schemas if they don't exist."""
+    for name, schema in DEFAULT_SCHEMAS.items():
+        schema_file = SCHEMA_DIR / f"{name}.json"
+        if not schema_file.exists():
+            with open(schema_file, 'w') as f:
+                json.dump(schema, f, indent=2)
 
 # Initialize default schemas if they don't exist
 DEFAULT_SCHEMAS = {
@@ -70,14 +82,6 @@ DEFAULT_SCHEMAS = {
         "additionalProperties": False
     }
 }
-
-def init_schemas():
-    """Initialize default schemas if they don't exist."""
-    for name, schema in DEFAULT_SCHEMAS.items():
-        schema_file = SCHEMA_DIR / f"{name}.json"
-        if not schema_file.exists():
-            with open(schema_file, 'w') as f:
-                json.dump(schema, f, indent=2)
 
 init_schemas()
 
@@ -425,46 +429,103 @@ def register_resource_routes():
         
         app.logger.info(f"Registered routes for {resource_name}")
 
+def read_markdown_file(filename: str) -> str:
+    """Read markdown content from a file in the doc directory."""
+    try:
+        file_path = DOC_DIR / filename
+        with open(file_path, 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        app.logger.error(f"Markdown file not found: {filename}")
+        return f"# Error\nMarkdown file '{filename}' not found."
+    except Exception as e:
+        app.logger.error(f"Error reading markdown file {filename}: {str(e)}")
+        return f"# Error\nFailed to read markdown file '{filename}': {str(e)}"
+
+def render_markdown(content: str) -> str:
+    """Convert markdown to HTML with GitHub-style CSS."""
+    html_content = markdown.markdown(content, extensions=['fenced_code', 'tables'])
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>REST Server Documentation</title>
+        <style>
+            body {{
+                font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+                line-height: 1.6;
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 2rem;
+                color: #24292e;
+            }}
+            h1, h2, h3 {{ color: #24292e; }}
+            code {{
+                background-color: #f6f8fa;
+                padding: 0.2em 0.4em;
+                border-radius: 3px;
+                font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+                font-size: 85%;
+            }}
+            pre {{
+                background-color: #f6f8fa;
+                padding: 16px;
+                border-radius: 6px;
+                overflow: auto;
+            }}
+            pre code {{
+                background-color: transparent;
+                padding: 0;
+            }}
+            blockquote {{
+                border-left: 4px solid #dfe2e5;
+                color: #6a737d;
+                padding: 0 1em;
+                margin: 0;
+            }}
+            table {{
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1em 0;
+            }}
+            th, td {{
+                border: 1px solid #dfe2e5;
+                padding: 6px 13px;
+            }}
+            tr:nth-child(2n) {{
+                background-color: #f6f8fa;
+            }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
 @app.route("/")
 def hello_world():
     """Root endpoint showing available routes."""
-    handlers = JSONFileHandler()
-    resources = handlers.get_resource_files()
-    endpoints = {
-        resource: {
-            "GET_all": f"/{resource}?page=1&per_page=10",
-            "GET_one": f"/{resource}/<id>",
-            "POST": f"/{resource}",
-            "PUT": f"/{resource}/<id>",
-            "DELETE": f"/{resource}/<id>"
-        }
-        for resource in resources.keys()
-    }
-    
-    schema_endpoints = {
-        "GET_all": "/schemas",
-        "GET_one": "/schemas/<resource_name>",
-        "PUT": "/schemas/<resource_name>"
-    }
-    
-    response = {
-        "message": "REST Server with Dynamic Routes",
-        "available_endpoints": endpoints,
-        "schema_endpoints": schema_endpoints,
-        "documentation": "/info",
-        "pagination": {
-            "page": "Query parameter for page number (default: 1)",
-            "per_page": f"Query parameter for items per page (default: {ResourceHandler.DEFAULT_PAGE_SIZE}, max: {ResourceHandler.MAX_PAGE_SIZE})"
-        }
-    }
-    app.logger.info("Root endpoint accessed")
-    return jsonify(response)
+    content = read_markdown_file('home.md')
+    return Response(render_markdown(content), mimetype='text/html')
 
 @app.route("/info")
 def info():
     """Serve the API documentation page."""
-    app.logger.info("Documentation page accessed")
-    return send_file('info.html')
+    content = read_markdown_file('info.md')
+    return Response(render_markdown(content), mimetype='text/html')
+
+@app.route("/schema-creator")
+def schema_creator():
+    """Serve the schema creator page."""
+    try:
+        with open(DOC_DIR / 'schema-creator.html', 'r') as f:
+            return Response(f.read(), mimetype='text/html')
+    except Exception as e:
+        app.logger.error(f"Error serving schema creator: {str(e)}")
+        return Response("Error: Schema creator page not found", status=404)
 
 # Register routes for all JSON files in the data directory
 register_resource_routes()
@@ -478,6 +539,7 @@ if __name__ == "__main__":
     print("\n=== REST Server Starting ===")
     print("Available endpoints will be shown in the response from: http://localhost:3000")
     print("API documentation available at: http://localhost:3000/info")
+    print("Schema creator available at: http://localhost:3000/schema-creator")
     print("Press Ctrl+C to stop the server")
     print("===============================\n")
     
