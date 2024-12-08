@@ -294,7 +294,7 @@
                 const jsonschema =  JSON.stringify(schema, null, 2);
                 console.log('jsonschema:', jsonschema);
                 // First, save the schema to a file
-                const saveResponse = await fetch(`/schemas/${resourceName}.json`, {
+                const saveResponse = await fetch(`/schemas/${resourceName}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -307,15 +307,15 @@
                 }
 
                 // Then update the schema in the application
-                const response = await fetch(`/schemas/${resourceName}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(schema)
-                });
+                //const response = await fetch(`/schemas/${resourceName}`, {
+                //    method: 'PUT',
+                //    headers: {
+                //        'Content-Type': 'application/json'
+                //    },
+                //    body: JSON.stringify(schema)
+                //});
                 
-                if (response.ok) {
+                if (saveResponse.ok) {
                     showSuccess(`Schema for '${resourceName}' has been successfully created and updated.`);
                 } else {
                     const data = await response.json();

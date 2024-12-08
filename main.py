@@ -377,6 +377,7 @@ def update_schema(resource_name):
         schema = request.get_json()
         # Validate that it's a valid JSON Schema
       # eg_ validate({}, schema)  # Simple validation to ensure it's a valid schema
+        app.logger.info(f"save_schema {resource_name:} {schema} ")
         SchemaHandler.save_schema(resource_name, schema)
         return jsonify(schema)
     except Exception as e:
