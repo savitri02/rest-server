@@ -13,5 +13,10 @@
     "id": 3,
     "name": "Bob Wilson",
     "email": "bob.wilson@example.com"
+  },
+  {
+    "id": 4,
+    "name": "Test User",
+    "email": "test@example.com"
   }
 ]

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REST Server API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .endpoint h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background: #27ae60; color: white; }
+        .post { background: #2980b9; color: white; }
+        .put { background: #f39c12; color: white; }
+        .delete { background: #c0392b; color: white; }
+    </style>
+</head>
+<body>
+    <h1>REST Server API Documentation</h1>
+    
+    <p>This server provides REST endpoints for managing users, devices, locations, and consumption data. All endpoints return JSON responses.</p>
+    
+    <h2>Base URL</h2>
+    <pre>http://localhost:3000</pre>
+
+    <h2>Available Resources</h2>
+    <ul>
+        <li>Users (/users)</li>
+        <li>Devices (/devices)</li>
+        <li>Locations (/locations)</li>
+        <li>Consumption (/consumption)</li>
+    </ul>
+
+    <h2>Example Requests</h2>
+    
+    <div class="endpoint">
+        <h3><span class="method get">GET</span> List All Resources</h3>
+        <p>Retrieve all items for a resource.</p>
+        <pre>
+# Get all users
+curl http://localhost:3000/users
+
+# Get all devices
+curl http://localhost:3000/devices
+
+# Get all locations
+curl http://localhost:3000/locations
+
+# Get all consumption data
+curl http://localhost:3000/consumption</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method get">GET</span> Get Single Item</h3>
+        <p>Retrieve a specific item by ID.</p>
+        <pre>
+# Get user with ID 1
+curl http://localhost:3000/users/1
+
+# Get device with ID 2
+curl http://localhost:3000/devices/2</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method post">POST</span> Create New Item</h3>
+        <p>Create a new resource item. The name field is required.</p>
+        <pre>
+# Create new user
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Doe", "email": "john@example.com"}'
+
+# Create new device
+curl -X POST http://localhost:3000/devices \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Smart Thermostat", "type": "temperature"}'
+
+# Create new location
+curl -X POST http://localhost:3000/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Living Room", "floor": "1"}'
+
+# Create new consumption record
+curl -X POST http://localhost:3000/consumption \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Daily Usage", "value": 45.2, "unit": "kWh"}'</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method put">PUT</span> Update Item</h3>
+        <p>Update an existing item by ID.</p>
+        <pre>
+# Update user with ID 1
+curl -X PUT http://localhost:3000/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Smith", "email": "john.smith@example.com"}'
+
+# Update device with ID 2
+curl -X PUT http://localhost:3000/devices/2 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Smart Thermostat v2", "type": "temperature"}'</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method delete">DELETE</span> Delete Item</h3>
+        <p>Delete an item by ID.</p>
+        <pre>
+# Delete user with ID 1
+curl -X DELETE http://localhost:3000/users/1
+
+# Delete device with ID 2
+curl -X DELETE http://localhost:3000/devices/2</pre>
+    </div>
+
+    <h2>Response Codes</h2>
+    <ul>
+        <li><strong>200 OK</strong> - Request successful</li>
+        <li><strong>201 Created</strong> - Resource created successfully</li>
+        <li><strong>400 Bad Request</strong> - Invalid request (e.g., missing required fields)</li>
+        <li><strong>404 Not Found</strong> - Resource not found</li>
+    </ul>
+
+</body>
+</html>
