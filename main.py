@@ -1,13 +1,13 @@
 import os
 import json
-from flask import Flask, request, jsonify, send_file, Response
+from flask import Flask, request, jsonify, send_file, Response # type: ignore
 from http import HTTPStatus
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from functools import partial
-from jsonschema import validate, ValidationError
+from jsonschema import validate, ValidationError # type: ignore
 from math import ceil
-import markdown
+import markdown # type: ignore
 
 app = Flask(__name__)
 # Enable pretty printing of JSON
