@@ -83,10 +83,44 @@
     <a href="/" class="home-button">← Back to Home</a>
     <h1>REST Server API Documentation</h1>
     
-    <p>This server provides REST endpoints for managing users, devices, locations, and consumption data. All endpoints return JSON responses with pagination support.</p>
+    <p>This server provides REST endpoints for managing users, devices, locations, and consumption data. All endpoints return JSON responses with pagination support and schema validation.</p>
     
     <h2>Base URL</h2>
     <pre>http://localhost:3000</pre>
+
+    <h2>Schema Management</h2>
+    <div class="endpoint">
+        <h3>Schema Endpoints</h3>
+        <ul>
+            <li><strong>GET /schemas</strong> - List all available schemas</li>
+            <li><strong>GET /schemas/{resource_name}</strong> - Get schema for specific resource</li>
+            <li><strong>PUT /schemas/{resource_name}</strong> - Update schema for specific resource</li>
+        </ul>
+        
+        <h3>Example Requests</h3>
+        <pre>
+# List all schemas
+curl http://localhost:3000/schemas
+
+# Get users schema
+curl http://localhost:3000/schemas/users
+
+# Update users schema
+curl -X PUT http://localhost:3000/schemas/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "object",
+    "properties": {
+      "name": {"type": "string", "minLength": 1},
+      "email": {"type": "string", "format": "email"}
+    },
+    "required": ["name", "email"]
+  }'</pre>
+
+        <div class="note">
+            <strong>Note:</strong> When updating a schema, ensure it's a valid JSON Schema. The new schema will be used for validating all subsequent requests for that resource.
+        </div>
+    </div>
 
     <h2>Pagination</h2>
     <div class="endpoint">
@@ -162,7 +196,7 @@ curl http://localhost:3000/devices/2</pre>
 
     <div class="endpoint">
         <h3><span class="method post">POST</span> Create New Item</h3>
-        <p>Create a new resource item. The name field is required.</p>
+        <p>Create a new resource item. The request must conform to the resource's schema.</p>
         <pre>
 # Create new user
 curl -X POST http://localhost:3000/users \
@@ -172,22 +206,22 @@ curl -X POST http://localhost:3000/users \
 # Create new device
 curl -X POST http://localhost:3000/devices \
   -H "Content-Type: application/json" \
-  -d '{"name": "Smart Thermostat", "type": "temperature"}'
+  -d '{"name": "Smart Thermostat", "type": "temperature", "location_id": 1}'
 
 # Create new location
 curl -X POST http://localhost:3000/locations \
   -H "Content-Type: application/json" \
-  -d '{"name": "Living Room", "floor": "1"}'
+  -d '{"name": "Living Room", "address": "123 Main St"}'
 
 # Create new consumption record
 curl -X POST http://localhost:3000/consumption \
   -H "Content-Type: application/json" \
-  -d '{"name": "Daily Usage", "value": 45.2, "unit": "kWh"}'</pre>
+  -d '{"name": "Daily Usage", "type": "electricity", "location_id": 1}'</pre>
     </div>
 
     <div class="endpoint">
         <h3><span class="method put">PUT</span> Update Item</h3>
-        <p>Update an existing item by ID.</p>
+        <p>Update an existing item by ID. The request must conform to the resource's schema.</p>
         <pre>
 # Update user with ID 1
 curl -X PUT http://localhost:3000/users/1 \
@@ -197,7 +231,7 @@ curl -X PUT http://localhost:3000/users/1 \
 # Update device with ID 2
 curl -X PUT http://localhost:3000/devices/2 \
   -H "Content-Type: application/json" \
-  -d '{"name": "Smart Thermostat v2", "type": "temperature"}'</pre>
+  -d '{"name": "Smart Thermostat v2", "type": "temperature", "location_id": 1}'</pre>
     </div>
 
     <div class="endpoint">
@@ -215,8 +249,8 @@ curl -X DELETE http://localhost:3000/devices/2</pre>
     <ul>
         <li><strong>200 OK</strong> - Request successful</li>
         <li><strong>201 Created</strong> - Resource created successfully</li>
-        <li><strong>400 Bad Request</strong> - Invalid request (e.g., missing required fields)</li>
-        <li><strong>404 Not Found</strong> - Resource not found</li>
+        <li><strong>400 Bad Request</strong> - Invalid request (e.g., missing required fields or schema validation failed)</li>
+        <li><strong>404 Not Found</strong> - Resource or schema not found</li>
     </ul>
 
 </body>

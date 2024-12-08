@@ -1,13 +1,11 @@
 import os
 import json
-from flask import Flask, request, jsonify, send_file, url_for
+from flask import Flask, request, jsonify, send_file
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Optional
 from functools import partial
 from jsonschema import validate, ValidationError
-from schemas import SCHEMA_MAP
-from math import ceil
 
 app = Flask(__name__)
 # Enable pretty printing of JSON
@@ -15,9 +13,101 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 # Enable more detailed logging
 app.config['DEBUG'] = True
 
-# Ensure data directory exists
+# Ensure directories exist
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
+SCHEMA_DIR = Path("schemas")
+SCHEMA_DIR.mkdir(exist_ok=True)
+
+# Initialize default schemas if they don't exist
+DEFAULT_SCHEMAS = {
+    "users": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "minLength": 1},
+            "email": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            }
+        },
+        "required": ["name", "email"],
+        "additionalProperties": False
+    },
+    "locations": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "minLength": 1},
+            "address": {"type": "string", "minLength": 1}
+        },
+        "required": ["name", "address"],
+        "additionalProperties": False
+    },
+    "devices": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "minLength": 1},
+            "type": {"type": "string", "minLength": 1},
+            "location_id": {"type": "integer", "minimum": 1},
+            "user_id": {"type": ["integer", "null"], "minimum": 1}
+        },
+        "required": ["name", "type", "location_id"],
+        "additionalProperties": False
+    },
+    "consumption": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "minLength": 1},
+            "type": {"type": "string", "minLength": 1},
+            "location_id": {"type": "integer", "minimum": 1},
+            "user_id": {"type": ["integer", "null"], "minimum": 1}
+        },
+        "required": ["name", "type", "location_id"],
+        "additionalProperties": False
+    }
+}
+
+def init_schemas():
+    """Initialize default schemas if they don't exist."""
+    for name, schema in DEFAULT_SCHEMAS.items():
+        schema_file = SCHEMA_DIR / f"{name}.json"
+        if not schema_file.exists():
+            with open(schema_file, 'w') as f:
+                json.dump(schema, f, indent=2)
+
+init_schemas()
+
+class SchemaHandler:
+    """Handler for schema operations."""
+    
+    @staticmethod
+    def get_schema(resource_name: str) -> Optional[Dict]:
+        """Get schema for a resource."""
+        schema_file = SCHEMA_DIR / f"{resource_name}.json"
+        if not schema_file.exists():
+            return None
+        with open(schema_file, 'r') as f:
+            return json.load(f)
+
+    @staticmethod
+    def save_schema(resource_name: str, schema: Dict) -> None:
+        """Save schema for a resource."""
+        schema_file = SCHEMA_DIR / f"{resource_name}.json"
+        with open(schema_file, 'w') as f:
+            json.dump(schema, f, indent=2)
+
+    @staticmethod
+    def list_schemas() -> Dict[str, Dict]:
+        """List all available schemas."""
+        schemas = {}
+        for schema_file in SCHEMA_DIR.glob("*.json"):
+            with open(schema_file, 'r') as f:
+                schemas[schema_file.stem] = json.load(f)
+        return schemas
 
 class JSONFileHandler:
     """Generic handler for JSON file operations."""
@@ -55,21 +145,22 @@ class ResourceHandler:
     def __init__(self, resource_name: str, file_path: Path):
         self.resource_name = resource_name
         self.file_path = file_path
-        self.schema = SCHEMA_MAP.get(resource_name)
-        if not self.schema:
-            app.logger.warning(f"No schema defined for resource: {resource_name}")
+        self.schema_handler = SchemaHandler()
 
     def validate_data(self, data: Dict[str, Any], check_required: bool = True) -> None:
         """Validate data against the schema."""
-        if not self.schema:
+        schema = self.schema_handler.get_schema(self.resource_name)
+        if not schema:
+            app.logger.warning(f"No schema defined for resource: {self.resource_name}")
             return
         
         try:
             # For updates, we don't check required fields as it might be a partial update
-            schema = self.schema if check_required else {
-                **self.schema,
-                "required": []  # Don't enforce required fields for updates
-            }
+            if not check_required:
+                schema = {
+                    **schema,
+                    "required": []  # Don't enforce required fields for updates
+                }
             validate(instance=data, schema=schema)
         except ValidationError as e:
             app.logger.error(f"Validation error: {str(e)}")
@@ -257,6 +348,36 @@ class ResourceHandler:
         }
         return jsonify(response)
 
+# Schema management endpoints
+@app.route("/schemas", methods=['GET'])
+def list_schemas():
+    """List all available schemas."""
+    schemas = SchemaHandler.list_schemas()
+    return jsonify(schemas)
+
+@app.route("/schemas/<resource_name>", methods=['GET'])
+def get_schema(resource_name):
+    """Get schema for a specific resource."""
+    schema = SchemaHandler.get_schema(resource_name)
+    if schema is None:
+        return jsonify({'error': 'Schema not found'}), HTTPStatus.NOT_FOUND
+    return jsonify(schema)
+
+@app.route("/schemas/<resource_name>", methods=['PUT'])
+def update_schema(resource_name):
+    """Update schema for a specific resource."""
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), HTTPStatus.BAD_REQUEST
+    
+    try:
+        schema = request.get_json()
+        # Validate that it's a valid JSON Schema
+        validate({}, schema)  # Simple validation to ensure it's a valid schema
+        SchemaHandler.save_schema(resource_name, schema)
+        return jsonify(schema)
+    except Exception as e:
+        return jsonify({'error': f'Invalid schema: {str(e)}'}), HTTPStatus.BAD_REQUEST
+
 def register_resource_routes():
     """Register routes for each JSON file in the data directory."""
     handlers = JSONFileHandler()
@@ -319,9 +440,17 @@ def hello_world():
         }
         for resource in resources.keys()
     }
+    
+    schema_endpoints = {
+        "GET_all": "/schemas",
+        "GET_one": "/schemas/<resource_name>",
+        "PUT": "/schemas/<resource_name>"
+    }
+    
     response = {
         "message": "REST Server with Dynamic Routes",
         "available_endpoints": endpoints,
+        "schema_endpoints": schema_endpoints,
         "documentation": "/info",
         "pagination": {
             "page": "Query parameter for page number (default: 1)",
