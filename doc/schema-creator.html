@@ -128,15 +128,14 @@
             <input type="text" id="resourceName" placeholder="e.g., users, devices, etc." required>
             
             <p>Enter a JSON object:</p>
-            <textarea id="inputObject" placeholder='Example:
-{
-    "name": "Sample Device",
-    "type": "sensor",
-    "location_id": 1,
-    "user_id": null
+            <textarea id="inputObject" placeholder='Example:{
+"id":1,
+"name": "Sample Device",
+"type": "sensor",
+"location_id": 1,
+"user_id": null
 }'></textarea>
-        </div>
-        
+        </div>      
         <div class="button-container">
             <button id="generateButton" class="action-button" onclick="generateSchema()">Generate Schema</button>
             <button id="submitButton" class="action-button" onclick="submitSchema()" disabled>Submit Schema</button>
@@ -273,9 +272,11 @@
 
         async function submitSchema() {
             console.log('Submit Schema button clicked');
-            const resourceName = document.getElementById('resourceName').value.trim();
-            const schemaText = document.getElementById('outputSchema').textContent;
-            
+            resourceNameId = document.getElementById('resourceName');
+            schemaTextId = document.getElementById('outputSchema');
+            const resourceName = resourceNameId.value.trim();
+            const schemaText = schemaTextId.innerText;
+            console.log("schemaTextId",schemaTextId,"schemaText",schemaText);
             clearMessages();
             
             if (!resourceName) {
@@ -290,10 +291,10 @@
             
             try {
                 const schema = JSON.parse(schemaText);
-                console.log('Submitting schema:', schema);
+               // console.log('Submitting schema:', schema);
                 const jsonschema =  JSON.stringify(schema, null, 2);
-                console.log('jsonschema:', jsonschema);
-                // First, save the schema to a file
+               // console.log('jsonschema:', jsonschema);
+                // Save the schema to a file
                 const saveResponse = await fetch(`/schemas/${resourceName}`, {
                     method: 'PUT',
                     headers: {
@@ -317,6 +318,10 @@
                 
                 if (saveResponse.ok) {
                     showSuccess(`Schema for '${resourceName}' has been successfully created and updated.`);
+                    resourceNameId.value = '';
+                    document.getElementById('inputObject').value ='';
+                    schemaTextId.innerText = '';
+                
                 } else {
                     const data = await response.json();
                     showError(`Error: ${data.error || 'Failed to update schema'}`);
@@ -329,13 +334,7 @@
 
         // Set initial example in textarea
         window.onload = function() {
-            document.getElementById('inputObject').value = JSON.stringify({
-                "name": "Sample Device",
-                "type": "sensor",
-                "location_id": 1,
-                "user_id": null
-            }, null, 4);
-            console.log('Page loaded, example data set');
+            
         };
     </script>
 </body>
