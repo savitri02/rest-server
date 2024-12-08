@@ -8,26 +8,25 @@
         body {
             font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
             line-height: 1.6;
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 2rem;
             color: #24292e;
         }
         .container {
             display: flex;
+            flex-direction: column;
             gap: 20px;
-        }
-        .input-section, .output-section {
-            flex: 1;
         }
         textarea {
             width: 100%;
-            height: 300px;
+            height: 200px;
             font-family: monospace;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             resize: vertical;
+            margin-bottom: 10px;
         }
         input[type="text"] {
             width: 100%;
@@ -36,72 +35,149 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        button {
+        .button-container {
+            position: sticky;
+            bottom: 20px;
+            background: #f6f8fa;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .action-button {
             background-color: #2ea44f;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: 12px 24px;
+            border-radius: 6px;
             cursor: pointer;
-            margin: 10px 0;
+            margin-right: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 150px;
         }
-        button:hover {
+        .action-button:hover {
             background-color: #2c974b;
+        }
+        .action-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
         .error {
             color: #d73a49;
             margin: 10px 0;
+            padding: 10px;
+            background-color: #ffebe9;
+            border-radius: 4px;
+            display: none;
         }
         .success {
             color: #2ea44f;
             margin: 10px 0;
+            padding: 10px;
+            background-color: #e6ffed;
+            border-radius: 4px;
+            display: none;
         }
         pre {
             background-color: #f6f8fa;
             padding: 16px;
             border-radius: 6px;
             overflow: auto;
+            margin-top: 20px;
         }
-        code {
-            font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+        #debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .home-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #0366d6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .home-button:hover {
+            background-color: #0255b3;
         }
     </style>
 </head>
 <body>
+    <a href="/" class="home-button">Home</a>
+    <div id="debug"></div>
     <h1>Schema Creator</h1>
-    <p>Create a JSON schema by inputting a JavaScript record object. The tool will automatically generate the corresponding schema.</p>
+    <p>Create a JSON schema by inputting a JSON object. The tool will automatically generate the corresponding schema.</p>
     
     <div class="container">
-        <div class="input-section">
+        <div>
             <h2>Input</h2>
             <p>Enter the resource name:</p>
             <input type="text" id="resourceName" placeholder="e.g., users, devices, etc." required>
             
-            <p>Enter a JavaScript record object:</p>
-            <textarea id="inputObject" placeholder='{
-    name: "John Doe",
-    email: "john@example.com",
-    age: 30,
-    isActive: true,
-    roles: ["user", "admin"],
-    address: {
-        street: "123 Main St",
-        city: "Example City"
-    }
+            <p>Enter a JSON object:</p>
+            <textarea id="inputObject" placeholder='Example:
+{
+    "name": "Sample Device",
+    "type": "sensor",
+    "location_id": 1,
+    "user_id": null
 }'></textarea>
-            <button onclick="generateSchema()">Generate Schema</button>
-            <button onclick="submitSchema()" id="submitButton" disabled>Submit Schema</button>
-            <div id="error" class="error"></div>
-            <div id="success" class="success"></div>
         </div>
         
-        <div class="output-section">
+        <div class="button-container">
+            <button id="generateButton" class="action-button" onclick="generateSchema()">Generate Schema</button>
+            <button id="submitButton" class="action-button" onclick="submitSchema()" disabled>Submit Schema</button>
+        </div>
+        
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+        
+        <div>
             <h2>Generated Schema</h2>
             <pre><code id="outputSchema"></code></pre>
         </div>
     </div>
 
     <script>
+        // Debug click positions
+        document.addEventListener('click', function(e) {
+            document.getElementById('debug').textContent = `Click at: ${e.clientX}, ${e.clientY}`;
+        });
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+            document.getElementById('success').style.display = 'none';
+            console.log('Error:', message);
+        }
+
+        function showSuccess(message) {
+            const success = document.getElementById('success');
+            success.textContent = message;
+            success.style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            console.log('Success:', message);
+        }
+
+        function clearMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+
         function inferType(value) {
             if (Array.isArray(value)) {
                 const itemType = value.length > 0 ? inferType(value[0]) : { type: "string" };
@@ -112,7 +188,10 @@
             }
             
             if (value === null) {
-                return { type: "null" };
+                return { 
+                    type: ["integer", "null"],
+                    minimum: 1
+                };
             }
             
             if (typeof value === "object") {
@@ -128,11 +207,17 @@
             }
             
             const type = typeof value;
-            if (type === "string" && value.includes("@")) {
+            if (type === "number") {
+                return {
+                    type: Number.isInteger(value) ? "integer" : "number",
+                    minimum: 1
+                };
+            }
+            
+            if (type === "string") {
                 return {
                     type: "string",
-                    format: "email",
-                    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                    minLength: 1
                 };
             }
             
@@ -140,18 +225,23 @@
         }
 
         function generateSchema() {
+            console.log('Generate Schema button clicked');
             const input = document.getElementById('inputObject').value;
-            const error = document.getElementById('error');
             const output = document.getElementById('outputSchema');
             const submitButton = document.getElementById('submitButton');
             
-            error.textContent = '';
+            clearMessages();
             output.textContent = '';
             submitButton.disabled = true;
             
             try {
-                // Convert the input string to a JavaScript object
-                const inputObj = eval(`(${input})`);
+                // Parse the input as JSON
+                const inputObj = JSON.parse(input);
+                console.log('Parsed input:', inputObj);
+                
+                if (Object.keys(inputObj).length === 0) {
+                    throw new Error('Input object cannot be empty');
+                }
                 
                 // Generate the schema
                 const schema = {
@@ -161,59 +251,92 @@
                     additionalProperties: false
                 };
                 
-                // Add id property
-                schema.properties.id = {
-                    type: "integer",
-                    minimum: 1
-                };
-                
-                // Process other properties
+                // Process properties
                 for (const [key, value] of Object.entries(inputObj)) {
                     schema.properties[key] = inferType(value);
-                    schema.required.push(key);
+                    if (value !== null) {
+                        schema.required.push(key);
+                    }
                 }
+                
+                console.log('Generated schema:', schema);
                 
                 // Display the generated schema
                 output.textContent = JSON.stringify(schema, null, 2);
                 submitButton.disabled = false;
+                showSuccess('Schema generated successfully!');
             } catch (e) {
-                error.textContent = 'Error: Invalid JavaScript object. Please check your input.';
+                console.error('Schema generation error:', e);
+                showError(`Error: ${e.message}. Please check your input.`);
             }
         }
 
         async function submitSchema() {
+            console.log('Submit Schema button clicked');
             const resourceName = document.getElementById('resourceName').value.trim();
-            const schema = document.getElementById('outputSchema').textContent;
-            const error = document.getElementById('error');
-            const success = document.getElementById('success');
+            const schemaText = document.getElementById('outputSchema').textContent;
             
-            error.textContent = '';
-            success.textContent = '';
+            clearMessages();
             
             if (!resourceName) {
-                error.textContent = 'Please enter a resource name.';
+                showError('Please enter a resource name.');
+                return;
+            }
+            
+            if (!schemaText) {
+                showError('Please generate a schema first.');
                 return;
             }
             
             try {
-                const response = await fetch(`/schemas/${resourceName}`, {
+                const schema = JSON.parse(schemaText);
+                console.log('Submitting schema:', schema);
+                const jsonschema =  JSON.stringify(schema, null, 2);
+                console.log('jsonschema:', jsonschema);
+                // First, save the schema to a file
+                const saveResponse = await fetch(`/schemas/${resourceName}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: schema
+                    body: jsonschema
                 });
+
+                if (!saveResponse.ok) {
+                    throw new Error('Failed to save schema file');
+                }
+
+                // Then update the schema in the application
+                //const response = await fetch(`/schemas/${resourceName}`, {
+                //    method: 'PUT',
+                //    headers: {
+                //        'Content-Type': 'application/json'
+                //    },
+                //    body: JSON.stringify(schema)
+                //});
                 
-                if (response.ok) {
-                    success.textContent = `Schema for '${resourceName}' has been successfully updated.`;
+                if (saveResponse.ok) {
+                    showSuccess(`Schema for '${resourceName}' has been successfully created and updated.`);
                 } else {
                     const data = await response.json();
-                    error.textContent = `Error: ${data.error || 'Failed to update schema'}`;
+                    showError(`Error: ${data.error || 'Failed to update schema'}`);
                 }
             } catch (e) {
-                error.textContent = `Error: ${e.message}`;
+                console.error('Schema submission error:', e);
+                showError(`Error: ${e.message}`);
             }
         }
+
+        // Set initial example in textarea
+        window.onload = function() {
+            document.getElementById('inputObject').value = JSON.stringify({
+                "name": "Sample Device",
+                "type": "sensor",
+                "location_id": 1,
+                "user_id": null
+            }, null, 4);
+            console.log('Page loaded, example data set');
+        };
     </script>
 </body>
 </html>
