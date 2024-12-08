@@ -96,9 +96,27 @@
             border-radius: 4px;
             font-size: 12px;
         }
+        .home-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #0366d6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .home-button:hover {
+            background-color: #0255b3;
+        }
     </style>
 </head>
 <body>
+    <a href="/" class="home-button">Home</a>
     <div id="debug"></div>
     <h1>Schema Creator</h1>
     <p>Create a JSON schema by inputting a JSON object. The tool will automatically generate the corresponding schema.</p>
